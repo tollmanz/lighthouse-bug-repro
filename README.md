@@ -1,6 +1,6 @@
 # Lighthouse Bug
 
-A repo for reproducing a Lighthouse bug on CentOS 7.
+A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/lighthouse/issues/5044) on CentOS 7.
 
 ## Lighthouse server and test page
 
