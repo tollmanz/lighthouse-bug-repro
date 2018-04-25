@@ -37,5 +37,5 @@ A repo for reproducing a Lighthouse bug on CentOS 7.
 1. Run Lighthouse against test page
 
     ```
-    lighthouse {{url}} --verbose --disable-network-throttling
+    lighthouse https://tollmanz.github.io/lighthouse-bug-repro/page/ --verbose --disable-network-throttling
     ```
