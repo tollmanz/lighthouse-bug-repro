@@ -6,6 +6,9 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Add the Chrome repo
 ADD google-chrome.repo /etc/yum.repos.d/
 
+# Install git
+RUN yum -y install git
+
 # Chrome dependencies
 RUN yum -y install epel-release
 RUN yum -y install libappindicator
@@ -35,4 +38,8 @@ RUN echo ${NODE_PATH} && echo ${PATH} && node -v
 RUN npm -v
 
 # Install Lighthouse
-RUN npm i -g lighthouse
+RUN git clone https://github.com/GoogleChrome/lighthouse.git /tmp/lighthouse
+RUN cd /tmp/lighthouse && npm i && npm link
+
+RUN mkdir /tmp/misc && chmod 777 /tmp/misc
+EXPOSE 9222

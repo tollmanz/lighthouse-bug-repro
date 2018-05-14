@@ -53,7 +53,7 @@ A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/ligh
 1. Run Lighthouse against test page
 
     ```
-    lighthouse https://tollmanz.github.io/lighthouse-bug-repro/page/ --verbose --disable-network-throttling --chrome-flags="--headless --disable-gpu --no-sandbox"
+    docker run -itp 9222:9222 lighthouse-bug node --inspect=0.0.0.0:9222 /tmp/lighthouse/lighthouse-cli/index.js https://tollmanz.github.io/lighthouse-bug-repro/page/ --chrome-flags="--headless --disable-gpu --no-sandbox" --verbose
     ```
 
     A few notes about this config:
@@ -62,6 +62,31 @@ A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/ligh
     * The `--chrome-flags` used seem to be [necessary](https://tollmanz.github.io/lighthouse-bug-repro/page/) to run Chrome via the Chrome Launcher on CentOS
     * The `--verbose` flag will show the `Inspector.targetCrashed {}` error message when the bug is produced
     * The `google-chrome-stable` package is used as that seems to be the recommendation from others using CentOS and it seems to work well other than with this case
+
+1. Checkout Lighthouse on the host machine
+1. In VS Code, use the following debug configuration to enable remote debugging to set breakpoints and step through the Lighthouse code in Debian
+
+    ```
+    {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Attach",
+                "type": "node",
+                "request": "attach",
+                "protocol": "inspector",
+                "port": 9222,
+                "sourceMaps": false,
+                "localRoot": "${workspaceRoot}",
+                "remoteRoot": "/tmp/lighthouse/",
+                "timeout": 10000,
+                // "processId": "${command:PickProcess}",
+                "restart": true
+            }
+        ]
+    }
+    ```
+
 
 ## Sample bug output
 
