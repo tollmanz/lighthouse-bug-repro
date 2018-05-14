@@ -1,10 +1,10 @@
-# Lighthouse Bug
+# Headless Chrome Bug
 
-A repo for reproducing a [Chrome Headless issue](https://github.com/GoogleChrome/lighthouse/issues/5044) on CentOS 7 and OS X 10.13.3.
+A repo for reproducing a [Chrome Headless issue](https://bugs.chromium.org/p/chromium/issues/detail?id=842679) on CentOS 7 and OS X 10.13.3.
 
 ## Synopsis
 
-When loading a page with a large image using Headless Chrome on CentOS 7.4.x, Chrome crashes with an `Abnormal renderer termination` error. Similarly, when running Headless Chrome on OS X, the same page crashes Chrome only when remote debugging is enable.
+When loading a page with a large image using Headless Chrome on CentOS 7.4.x, Chrome crashes with an `Abnormal renderer termination` error. Similarly, when running Headless Chrome on OS X, the same page crashes Chrome only when remote debugging is enabled.
 
 *Note that this started as a [Lighthouse bug](https://github.com/GoogleChrome/lighthouse/issues/5044), but after further investigation, it appears to be a Chrome bug.*
 
@@ -82,13 +82,12 @@ There's two variants of this bug. Below are steps to reproduce on Debian and OS 
 
 **Debian**
 
-1. Clone repo `git clone https://github.com/tollmanz/lighthouse-bug-repro.git`
-1. Checkout branch `git checkout headless-chrome`
+1. Clone repo `git clone https://github.com/tollmanz/lighthouse-bug-repro.git --branch headless-chrome`
 1. Install Docker
 1. Build image
 
     ```
-    cd env && docker build -t lighthouse-bug .
+    cd lighthouse-bug-repro/env && docker build -t lighthouse-bug .
     ```
 
 1. Attach to image
