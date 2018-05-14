@@ -1,16 +1,57 @@
 # Lighthouse Bug
 
-A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/lighthouse/issues/5044) on CentOS 7.
+A repo for reproducing a [Chrome Headless issue](https://github.com/GoogleChrome/lighthouse/issues/5044) on CentOS 7 and OS X 10.13.3.
 
-## Lighthouse server and test page
+## Synopsis
 
-**Server**
+When loading a page with a large image using Headless Chrome on CentOS 7.4.x, Chrome crashes with an `Abnormal renderer termination` error. Similarly, when running Headless Chrome on OS X, the same page crashes Chrome only when remote debugging is enable.
 
-* CentOS 7 from official Docker package
-* Node v8.11.1 (latest LTS at time of creation)
-* NPM v5.6.0
-* Lighthouse
-* google-chrome-stable (66.x at time of creation)
+*Note that this started as a [Lighthouse bug](https://github.com/GoogleChrome/lighthouse/issues/5044), but after further investigation, it appears to be a Chrome bug.*
+
+## Lighthouse environment and test page
+
+**Environments**
+
+* CentOS 7
+
+    ```
+    [root@b2d22f2aa175 /]# cat /etc/*-release
+    CentOS Linux release 7.4.1708 (Core)
+    NAME="CentOS Linux"
+    VERSION="7 (Core)"
+    ID="centos"
+    ID_LIKE="rhel fedora"
+    VERSION_ID="7"
+    PRETTY_NAME="CentOS Linux 7 (Core)"
+    ANSI_COLOR="0;31"
+    CPE_NAME="cpe:/o:centos:centos:7"
+    HOME_URL="https://www.centos.org/"
+    BUG_REPORT_URL="https://bugs.centos.org/"
+
+    CENTOS_MANTISBT_PROJECT="CentOS-7"
+    CENTOS_MANTISBT_PROJECT_VERSION="7"
+    REDHAT_SUPPORT_PRODUCT="centos"
+    REDHAT_SUPPORT_PRODUCT_VERSION="7"
+
+    CentOS Linux release 7.4.1708 (Core)
+    CentOS Linux release 7.4.1708 (Core)
+    ```
+
+    google-chrome-stable (66.x at time of creation)
+
+    ```
+    [root@9da8e76601b6 /]# google-chrome-stable --version
+    Google Chrome 66.0.3359.170
+    ```
+
+* OS X
+
+    Version 10.13.3
+
+    ```
+    ❯❯❯ /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version
+    Google Chrome 66.0.3359.139
+    ```
 
 **Test page**
 
@@ -35,8 +76,14 @@ A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/ligh
 </html>
 ```
 
-## Reproduce bug
+## Steps to reproduce
 
+There's two variants of this bug. Below are steps to reproduce on Debian and OS X.
+
+**Debian**
+
+1. Clone repo `git clone https://github.com/tollmanz/lighthouse-bug-repro.git`
+1. Checkout branch `git checkout headless-chrome`
 1. Install Docker
 1. Build image
 
@@ -50,184 +97,110 @@ A repo for reproducing a [Lighthouse issue](https://github.com/GoogleChrome/ligh
     docker run -it lighthouse-bug /bin/bash
     ```
 
-1. Run Lighthouse against test page
+1. Load test page with big image using Headless Chrome
 
     ```
-    lighthouse https://tollmanz.github.io/lighthouse-bug-repro/page/ --verbose --disable-network-throttling --chrome-flags="--headless --disable-gpu --no-sandbox"
+    google-chrome-stable --headless --enable-logging --v=99 --no-sandbox --disable-gpu https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
     ```
 
-    A few notes about this config:
+    Sample output:
 
-    * You can pass `--disable-network-throttling` or not. I find that the bug is more reproducible with it. Without it, you sometimes get other network errors. Also, it's a lot faster :)
-    * The `--chrome-flags` used seem to be [necessary](https://tollmanz.github.io/lighthouse-bug-repro/page/) to run Chrome via the Chrome Launcher on CentOS
-    * The `--verbose` flag will show the `Inspector.targetCrashed {}` error message when the bug is produced
-    * The `google-chrome-stable` package is used as that seems to be the recommendation from others using CentOS and it seems to work well other than with this case
+    ```
+    [root@00335566dbd5]# google-chrome-stable --headless --no-sandbox --disable-gpu https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
+    [0514/020857.234627:ERROR:gpu_process_transport_factory.cc(1007)] Lost UI shared context.
+    Fontconfig warning: "/etc/fonts/fonts.conf", line 146: blank doesn't take any effect anymore. please remove it from your fonts.conf
+    [0514/020857.693097:ERROR:crash_handler_host_linux.cc(432)] Failed to write crash dump for pid 1534
+    Cannot upload crash dump: failed to open
+    [0514/020857.744852:ERROR:headless_shell.cc(348)] Abnormal renderer termination.
+    --2018-05-14 02:08:57--  https://clients2.google.com/cr/report
+    Resolving clients2.google.com (clients2.google.com)... 172.217.9.142, 2607:f8b0:4000:813::200e
+    Connecting to clients2.google.com (clients2.google.com)|172.217.9.142|:443... connected.
+    HTTP request sent, awaiting response... 403 Forbidden
+    2018-05-14 02:08:57 ERROR 403: Forbidden.
 
-## Sample bug output
 
-```
-[root@b2d22f2aa175 /]# lighthouse https://tollmanz.github.io/lighthouse-bug-repro/page/ --verbose --chrome-flags="--headless --disable-gpu --no-sandbox" --disable-network-throttling
-which: no chromium-browser in (/root/.nvm/versions/node/v8.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
-which: no chromium in (/root/.nvm/versions/node/v8.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
-  ChromeLauncher:verbose created /tmp/lighthouse.8nM6yZh +0ms
-  ChromeLauncher:verbose Launching with command:
-  ChromeLauncher:verbose "/usr/bin/google-chrome-stable" --disable-translate --disable-extensions --disable-background-networking --safebrowsing-disable-auto-update --disable-sync --metrics-recording-only --disable-default-apps --mute-audio --no-first-run --remote-debugging-port=35351 --user-data-dir=/tmp/lighthouse.8nM6yZh --disable-setuid-sandbox --headless --disable-gpu --no-sandbox about:blank +8ms
-  ChromeLauncher:verbose Chrome running with pid 795 on port 35351. +7ms
-  ChromeLauncher Waiting for browser. +1ms
-  ChromeLauncher Waiting for browser... +0ms
-  ChromeLauncher Waiting for browser..... +518ms
-  ChromeLauncher Waiting for browser.....✓ +5ms
-  Driver:verbose Network.enable +279ms
-  method => browser:verbose Network.enable {} +1ms
-  method <= browser OK:verbose Network.enable {} +26ms
-  Driver:verbose Page.enable +3ms
-  method => browser:verbose Page.enable {} +1ms
-  method => browser:verbose Emulation.setScriptExecutionDisabled {"value":false} +0ms
-  method => browser:verbose Page.navigate {"url":"about:blank"} +2ms
-  method <= browser OK:verbose Page.enable {} +8ms
-  method <= browser OK:verbose Emulation.setScriptExecutionDisabled {} +0ms
-  method <= browser OK:verbose Page.navigate {"frameId":"36E1CF1675C3EF036F321961E2234804","loaderId":"7BE69C4CFDF5F6514E62D383C1619056"} +0ms
-  <= event:verbose Page.frameStartedLoading {"frameId":"36E1CF1675C3EF036F321961E2234804"} +11ms
-  <= event:verbose Page.frameNavigated {"frame":{"id":"36E1CF1675C3EF036F321961E2234804","loaderId":"7BE69C4CFDF5F6514E62D383C1619056","url":"about:blank","securityOrigin":"://","mimeType":"text/html"}} +4ms
-  <= event:verbose Page.loadEventFired {"timestamp":542686.906666} +4ms
-  <= event:verbose Page.frameStoppedLoading {"frameId":"36E1CF1675C3EF036F321961E2234804"} +1ms
-  <= event:verbose Page.domContentEventFired {"timestamp":542686.907286} +1ms
-  status Initializing… +279ms
-  listen once for event =>:verbose ServiceWorker.workerRegistrationUpdated  +2ms
-  Driver:verbose ServiceWorker.enable +0ms
-  method => browser:verbose ServiceWorker.enable {} +0ms
-  method <= browser OK:verbose ServiceWorker.enable {} +2ms
-  <= event:verbose ServiceWorker.workerRegistrationUpdated {"registrations":[]} +1ms
-  Driver:verbose ServiceWorker.disable +0ms
-  method => browser:verbose ServiceWorker.disable {} +1ms
-  <= event:verbose ServiceWorker.workerVersionUpdated {"versions":[]} +0ms
-  method <= browser OK:verbose ServiceWorker.disable {} +2ms
-  listen for event =>:verbose ServiceWorker.workerVersionUpdated  +1ms
-  Driver:verbose ServiceWorker.enable +0ms
-  method => browser:verbose ServiceWorker.enable {} +0ms
-  <= event:verbose ServiceWorker.workerRegistrationUpdated {"registrations":[]} +1ms
-  <= event:verbose ServiceWorker.workerVersionUpdated {"versions":[]} +0ms
-  Driver:verbose ServiceWorker.disable +1ms
-  method => browser:verbose ServiceWorker.disable {} +0ms
-  method <= browser OK:verbose ServiceWorker.enable {} +1ms
-  method <= browser OK:verbose ServiceWorker.disable {} +0ms
-  method => browser:verbose Runtime.evaluate {"expression":"(function wrapInNativePromise() {\n          const __nativePromise = window.__nativePromise || Promise;\n          return new __nativePromise(function (resolve) {\n  +4ms
-  method <= browser OK:verbose Runtime.evaluate {"result":{"type":"string","value":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/66.0.3359.117 Safari/537.36"}} +6ms
-  method => browser:verbose Emulation.setDeviceMetricsOverride {"mobile":true,"screenWidth":412,"screenHeight":732,"width":412,"height":732,"positionX":0,"positionY":0,"scale":1,"deviceScaleFactor":2.625,"fitWindow":false,"sc +3ms
-  method => browser:verbose Network.setUserAgentOverride {"userAgent":"Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5 Build/MRA58N) AppleWebKit/537.36(KHTML, like Gecko) Chrome/66.0.3359.30 Mobile Safari/537.36"} +1ms
-  method => browser:verbose Emulation.setTouchEmulationEnabled {"enabled":true,"configuration":"mobile"} +1ms
-  method => browser:verbose Page.addScriptToEvaluateOnLoad {"scriptSource":"(function () {\n    const touchEvents = ['ontouchstart', 'ontouchend', 'ontouchmove', 'ontouchcancel'];\n    const recepients = [window.__proto__, do +1ms
-  <= event:verbose Page.frameResized {} +2ms
-  <= event:verbose Page.frameResized {} +3ms
-  method <= browser OK:verbose Emulation.setDeviceMetricsOverride {} +2ms
-  method <= browser OK:verbose Network.setUserAgentOverride {} +0ms
-  method <= browser OK:verbose Emulation.setTouchEmulationEnabled {} +4ms
-  method <= browser OK:verbose Page.addScriptToEvaluateOnLoad {"identifier":"1"} +0ms
-  method => browser:verbose Emulation.setCPUThrottlingRate {"rate":4} +1ms
-  method => browser:verbose Network.emulateNetworkConditions {"latency":0,"downloadThroughput":0,"uploadThroughput":0,"offline":false} +1ms
-  method <= browser OK:verbose Emulation.setCPUThrottlingRate {} +2ms
-  method <= browser OK:verbose Network.emulateNetworkConditions {} +5ms
-  Driver:verbose Runtime.enable +2ms
-  method => browser:verbose Runtime.enable {} +1ms
-  <= event:verbose Runtime.executionContextCreated {"context":{"id":1,"origin":"://","name":"","auxData":{"isDefault":true,"frameId":"36E1CF1675C3EF036F321961E2234804"}}} +10ms
-  method <= browser OK:verbose Runtime.enable {} +1ms
-  method => browser:verbose Page.addScriptToEvaluateOnLoad {"scriptSource":"window.__nativePromise = Promise;\n        window.__nativeError = Error;"} +0ms
-  method <= browser OK:verbose Page.addScriptToEvaluateOnLoad {"identifier":"2"} +3ms
-  method => browser:verbose Page.addScriptToEvaluateOnLoad {"scriptSource":"(function registerPerformanceObserverInPage() {\n  window.____lastLongTask = window.performance.now();\n  const observer = new window.PerformanceObse +0ms
-  method <= browser OK:verbose Page.addScriptToEvaluateOnLoad {"identifier":"3"} +2ms
-  listen for event =>:verbose Page.javascriptDialogOpening  +0ms
-  method => browser:verbose Storage.clearDataForOrigin {"origin":"https://tollmanz.github.io","storageTypes":"appcache,file_systems,indexeddb,local_storage,shader_cache,websql,service_workers,cache_storage"} +2ms
-  method <= browser OK:verbose Storage.clearDataForOrigin {} +15ms
-  method => browser:verbose Emulation.setCPUThrottlingRate {"rate":4} +1ms
-  method => browser:verbose Network.emulateNetworkConditions {"latency":0,"downloadThroughput":0,"uploadThroughput":0,"offline":false} +1ms
-  method <= browser OK:verbose Emulation.setCPUThrottlingRate {} +2ms
-  method <= browser OK:verbose Network.emulateNetworkConditions {} +10ms
-  method => browser:verbose Emulation.setScriptExecutionDisabled {"value":false} +2ms
-  method => browser:verbose Page.navigate {"url":"about:blank"} +0ms
-  method <= browser OK:verbose Emulation.setScriptExecutionDisabled {} +9ms
-  method <= browser OK:verbose Page.navigate {"frameId":"36E1CF1675C3EF036F321961E2234804","loaderId":"3E0DDE7D81501752D3D71BBDD26CE0EB"} +2ms
-  <= event:verbose Page.frameStartedLoading {"frameId":"36E1CF1675C3EF036F321961E2234804"} +47ms
-  <= event:verbose Runtime.executionContextDestroyed {"executionContextId":1} +1ms
-  <= event:verbose Runtime.executionContextsCleared {} +0ms
-  <= event:verbose Page.frameNavigated {"frame":{"id":"36E1CF1675C3EF036F321961E2234804","loaderId":"3E0DDE7D81501752D3D71BBDD26CE0EB","url":"about:blank","securityOrigin":"://","mimeType":"text/html"}} +1ms
-  <= event:verbose Runtime.executionContextCreated {"context":{"id":2,"origin":"://","name":"","auxData":{"isDefault":true,"frameId":"36E1CF1675C3EF036F321961E2234804"}}} +0ms
-  <= event:verbose Page.loadEventFired {"timestamp":542687.350925} +0ms
-  <= event:verbose Page.frameStoppedLoading {"frameId":"36E1CF1675C3EF036F321961E2234804"} +1ms
-  <= event:verbose Page.domContentEventFired {"timestamp":542687.354573} +0ms
-  method => browser:verbose Network.setBlockedURLs {"urls":[]} +241ms
-  method <= browser OK:verbose Network.setBlockedURLs {} +4ms
-  listen for event =>:verbose Runtime.exceptionThrown  +1ms
-  listen for event =>:verbose Log.entryAdded  +0ms
-  Driver:verbose Log.enable +1ms
-  method => browser:verbose Log.enable {} +0ms
-  method <= browser OK:verbose Log.enable {} +3ms
-  method => browser:verbose Log.startViolationsReport {"config":[{"name":"discouragedAPIUse","threshold":-1}]} +0ms
-  method <= browser OK:verbose Log.startViolationsReport {} +4ms
-  method => browser:verbose Page.addScriptToEvaluateOnLoad {"scriptSource":"(function installMediaListener() {\n  window.___linkMediaChanges = [];\n  Object.defineProperty(HTMLLinkElement.prototype, 'media', {\n    set: funct +2ms
-  method <= browser OK:verbose Page.addScriptToEvaluateOnLoad {"identifier":"4"} +5ms
-  status Loading page & waiting for onload URL, Scripts, CSSUsage, Viewport, ViewportDimensions, ThemeColor, Manifest, RuntimeExceptions, ChromeConsoleMessages, ImageUsage, Accessibility, EventListeners, AnchorsWithNoRelNoopener, AppCacheManifest, DOMStats, JSLibraries, OptimizedImages, PasswordInputsWithPreventedPaste, ResponseCompression, TagsBlockingFirstPaint, WebSQL, MetaDescription, FontSize, CrawlableLinks, MetaRobots, Hreflang, EmbeddedContent, Canonical, RobotsTxt, Fonts +1ms
-  method => browser:verbose Network.clearBrowserCache {} +1ms
-  method <= browser OK:verbose Network.clearBrowserCache {} +3ms
-  method => browser:verbose Network.setCacheDisabled {"cacheDisabled":true} +0ms
-  method <= browser OK:verbose Network.setCacheDisabled {} +3ms
-  method => browser:verbose Network.setCacheDisabled {"cacheDisabled":false} +0ms
-  method <= browser OK:verbose Network.setCacheDisabled {} +5ms
-  listen once for event =>:verbose Tracing.tracingComplete  +4ms
-  method => browser:verbose Tracing.end {} +0ms
-  method <= browser ERR:verbose Tracing.end  +2ms
-  method => browser:verbose Tracing.start {"categories":"-*,toplevel,v8.execute,blink.console,blink.user_timing,benchmark,loading,latencyInfo,devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-devtool +4ms
-  method <= browser OK:verbose Tracing.start {} +25ms
-  method => browser:verbose Emulation.setScriptExecutionDisabled {"value":false} +1ms
-  method => browser:verbose Page.navigate {"url":"https://tollmanz.github.io/lighthouse-bug-repro/page/"} +1ms
-  listen once for event =>:verbose Page.loadEventFired  +1ms
-  listen once for event =>:verbose Page.domContentEventFired  +1ms
-  method <= browser OK:verbose Emulation.setScriptExecutionDisabled {} +5ms
-  <= event:verbose Network.requestWillBeSent {"requestId":"0049638A7402D1E6138C3E6E7ED5FC96","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96","documentURL":"https://tollmanz.github.io/lighthouse-bug-repro/page/","request":{"url" +5ms
-  NetworkRecorder:verbose network semi-quiet +10ms
-  <= event:verbose Network.responseReceived {"requestId":"0049638A7402D1E6138C3E6E7ED5FC96","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96","timestamp":542687.794354,"type":"Document","response":{"url":"https://tollmanz.github. +104ms
-  method <= browser OK:verbose Page.navigate {"frameId":"36E1CF1675C3EF036F321961E2234804","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96"} +2ms
-  <= event:verbose Page.frameStartedLoading {"frameId":"36E1CF1675C3EF036F321961E2234804"} +8ms
-  <= event:verbose Network.dataReceived {"requestId":"0049638A7402D1E6138C3E6E7ED5FC96","timestamp":542687.806458,"dataLength":393,"encodedDataLength":256} +46ms
-  <= event:verbose Runtime.executionContextDestroyed {"executionContextId":2} +3ms
-  <= event:verbose Runtime.executionContextsCleared {} +1ms
-  <= event:verbose Page.frameNavigated {"frame":{"id":"36E1CF1675C3EF036F321961E2234804","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96","url":"https://tollmanz.github.io/lighthouse-bug-repro/page/","securityOrigin":"https://to +0ms
-  <= event:verbose Runtime.executionContextCreated {"context":{"id":3,"origin":"https://tollmanz.github.io","name":"","auxData":{"isDefault":true,"frameId":"36E1CF1675C3EF036F321961E2234804"}}} +0ms
-  <= event:verbose Network.loadingFinished {"requestId":"0049638A7402D1E6138C3E6E7ED5FC96","timestamp":542687.801822,"encodedDataLength":591,"blockedCrossSiteDocument":false} +0ms
-  NetworkRecorder:verbose network fully-quiet +2ms
-  <= event:verbose Network.requestWillBeSent {"requestId":"847.2","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96","documentURL":"https://tollmanz.github.io/lighthouse-bug-repro/page/","request":{"url":"https://tollmanz.github.i +16ms
-  NetworkRecorder:verbose network semi-quiet +1ms
-  <= event:verbose Page.domContentEventFired {"timestamp":542687.871965} +0ms
-  <= event:verbose Network.resourceChangedPriority {"requestId":"847.2","newPriority":"High","timestamp":542687.889696} +34ms
-  <= event:verbose Network.responseReceived {"requestId":"847.2","loaderId":"0049638A7402D1E6138C3E6E7ED5FC96","timestamp":542687.908868,"type":"Image","response":{"url":"https://tollmanz.github.io/lighthouse-bug-repro/page/p +5ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542687.917635,"dataLength":10873,"encodedDataLength":10882} +10ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542687.933432,"dataLength":16375,"encodedDataLength":16384} +17ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542687.938314,"dataLength":5348,"encodedDataLength":0} +3ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542687.969847,"dataLength":49125,"encodedDataLength":54500} +29ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.001427,"dataLength":65500,"encodedDataLength":65536} +35ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.006303,"dataLength":36,"encodedDataLength":0} +13ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.013134,"dataLength":16339,"encodedDataLength":16384} +34ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.024063,"dataLength":32768,"encodedDataLength":0} +3ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.036729,"dataLength":16357,"encodedDataLength":0} +13ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.052857,"dataLength":5958,"encodedDataLength":96079} +29ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.094785,"dataLength":32768,"encodedDataLength":65536} +17ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.111288,"dataLength":32768,"encodedDataLength":0} +1ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.118934,"dataLength":65536,"encodedDataLength":57344} +24ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.145754,"dataLength":65536,"encodedDataLength":81920} +10ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.152394,"dataLength":49017,"encodedDataLength":0} +4ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.155495,"dataLength":16375,"encodedDataLength":16384} +1ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.191189,"dataLength":43609,"encodedDataLength":32768} +47ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.192691,"dataLength":21927,"encodedDataLength":0} +8ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.213678,"dataLength":65536,"encodedDataLength":131072} +10ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.229216,"dataLength":65536,"encodedDataLength":49152} +42ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.294806,"dataLength":65536,"encodedDataLength":163840} +36ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.307707,"dataLength":65536,"encodedDataLength":32768} +33ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.33743,"dataLength":65536,"encodedDataLength":163840} +15ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.35309,"dataLength":65536,"encodedDataLength":32768} +9ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.353685,"dataLength":65536,"encodedDataLength":0} +1ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.354047,"dataLength":43609,"encodedDataLength":0} +1ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.354107,"dataLength":21927,"encodedDataLength":0} +1ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.354582,"dataLength":16051,"encodedDataLength":0} +34ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.409278,"dataLength":49125,"encodedDataLength":49152} +22ms
-  <= event:verbose Network.dataReceived {"requestId":"847.2","timestamp":542688.421952,"dataLength":32768,"encodedDataLength":81920} +10ms
-  <= event:verbose Inspector.targetCrashed {} +128ms
-  ```
+    Unexpected crash report id length
+    Failed to get crash dump id.
+    Report Id:
+    ```
+
+**OS X**
+
+Headless Chrome on OS X appears to also crash when loading this page; however, it only occurs when remote debugging is enabled.
+
+1. Run the following, which should produce an unknown error and attempt to send a bug report:
+
+    ```
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --headless --enable-logging --v=99 https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
+    ```
+
+    Adjust the path to Chrome as needed.
+
+    Sample output:
+
+    ```
+    ❯❯❯ chrome --remote-debugging-port=9223 --headless --enable-logging --v=99 https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
+    [0514/083619.799527:ERROR:xattr.cc(64)] setxattr org.chromium.crashpad.database.initialized on file /var/folders/62/yj6q_lss5yqc6h0sjhm4cyc00000gn/T/: Operation not permitted (1)
+    [0514/083619.799005:ERROR:xattr.cc(64)] setxattr org.chromium.crashpad.database.initialized on file /var/folders/62/yj6q_lss5yqc6h0sjhm4cyc00000gn/T/: Operation not permitted (1)
+    [0514/083619.799820:INFO:crashpad_client_mac.cc(292)] restarting handler in 0.982s
+    [0514/083619.848508:ERROR:gpu_process_transport_factory.cc(1007)] Lost UI shared context.
+    [0514/083619.848719:VERBOSE1:webrtc_internals.cc(125)] Could not get the download directory.
+
+    DevTools listening on ws://127.0.0.1:9223/devtools/browser/c558873f-e657-4fa5-8518-580cfcd291d9
+    [0514/083619.901851:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Argon2018' log
+    [0514/083619.901936:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Argon2019' log
+    [0514/083619.901981:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Argon2020' log
+    [0514/083619.902021:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Argon2021' log
+    [0514/083619.902061:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Aviator' log
+    [0514/083619.902101:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Icarus' log
+    [0514/083619.902140:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Pilot' log
+    [0514/083619.902203:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Rocketeer' log
+    [0514/083619.902248:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Google 'Skydiver' log
+    [0514/083619.902289:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Cloudflare 'Nimbus2018' Log
+    [0514/083619.902330:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Cloudflare 'Nimbus2019' Log
+    [0514/083619.902370:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Cloudflare 'Nimbus2020' Log
+    [0514/083619.902414:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Cloudflare 'Nimbus2021' Log
+    [0514/083619.902450:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: DigiCert Log Server
+    [0514/083619.902484:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: DigiCert Log Server 2
+    [0514/083619.902520:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Symantec log
+    [0514/083619.902556:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Symantec 'Vega' log
+    [0514/083619.902591:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Symantec 'Sirius' log
+    [0514/083619.902627:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Venafi Gen2 CT log
+    [0514/083619.902663:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: CNNIC CT log
+    [0514/083619.902718:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Comodo 'Sabre' CT log
+    [0514/083619.902760:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Comodo 'Mammoth' CT log
+    [0514/083619.902797:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: StartCom log
+    [0514/083619.902832:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: WoSign log
+    [0514/083619.902867:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Izenpe log
+    [0514/083619.902903:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Venafi log
+    [0514/083619.902954:VERBOSE1:multi_log_ct_verifier.cc(75)] Adding CT log: Certly.IO log
+    [0514/083619.911137:VERBOSE1:network_delegate.cc(30)] NetworkDelegate::NotifyBeforeURLRequest: https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
+    [0514/083619.969329:INFO:cpu_info.cc(50)] Available number of cores: 4
+    [0514/083620.012332:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.013276:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.013688:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.014066:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.014427:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.014789:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.017301:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.020293:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.021149:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.022970:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.038670:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.039776:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.040166:VERBOSE2:ThreadState.cpp(533)] [state:0x10b9ba090] ScheduleGCIfNeeded
+    [0514/083620.048355:VERBOSE2:ThreadState.cpp(496)] [state:0x10b9ba090] SchedulePageNavigationGCIfNeeded: estimatedRemovalRatio=0.75
+    [0514/083620.053295:VERBOSE1:network_delegate.cc(30)] NetworkDelegate::NotifyBeforeURLRequest: https://tollmanz.github.io/lighthouse-bug-repro/page/panda-bear-sleeping-on-the-ground.jpg
+    [0514/083620.804956:ERROR:xattr.cc(64)] setxattr org.chromium.crashpad.database.initialized on file /var/folders/62/yj6q_lss5yqc6h0sjhm4cyc00000gn/T/: Operation not permitted (1)
+    [0514/083620.810235:INFO:crashpad_client_mac.cc(292)] restarting handler in 0.974s
+    [0514/083621.803483:ERROR:xattr.cc(64)] setxattr org.chromium.crashpad.database.initialized on file /var/folders/62/yj6q_lss5yqc6h0sjhm4cyc00000gn/T/: Operation not permitted (1)
+    [0514/083621.804158:INFO:crashpad_client_mac.cc(292)] restarting handler in 0.981s
+    [0514/083622.803439:ERROR:xattr.cc(64)] setxattr org.chromium.crashpad.database.initialized on file /var/folders/62/yj6q_lss5yqc6h0sjhm4cyc00000gn/T/: Operation not permitted (1)
+    [0514/083622.804323:INFO:crashpad_client_mac.cc(292)] restarting handler in 0.981s
+    ```
+
+1. Run the following, which is the same as the first step, but without remote debugging enabled. It should not produce an error:
+
+    ```
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --headless --enable-logging --v=99 https://tollmanz.github.io/lighthouse-bug-repro/page/index.html
+    ```
